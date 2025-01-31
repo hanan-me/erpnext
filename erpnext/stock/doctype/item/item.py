@@ -366,16 +366,31 @@ class Item(Document):
 			for item_barcode in self.barcodes:
 				options = frappe.get_meta("Item Barcode").get_options("barcode_type").split("\n")
 				if item_barcode.barcode:
+					# Check for duplicate barcode, allowing duplicates if custom_company is different
 					duplicate = frappe.db.sql(
-						"""select parent from `tabItem Barcode` where barcode = %s and parent != %s""",
-						(item_barcode.barcode, self.name),
+						"""select parent from `tabItem Barcode` 
+						where barcode = %s and parent != %s 
+						and exists (select 1 from `tabItem` where name = parent and custom_company = %s)""",
+						(item_barcode.barcode, self.name, self.custom_company),
 					)
+					
 					if duplicate:
 						frappe.throw(
 							_("Barcode {0} already used in Item {1}").format(
 								item_barcode.barcode, duplicate[0][0]
 							)
 						)
+				# if item_barcode.barcode:
+				# 	duplicate = frappe.db.sql(
+				# 		"""select parent from `tabItem Barcode` where barcode = %s and parent != %s""",
+				# 		(item_barcode.barcode, self.name),
+				# 	)
+				# 	if duplicate:
+				# 		frappe.throw(
+				# 			_("Barcode {0} already used in Item {1}").format(
+				# 				item_barcode.barcode, duplicate[0][0]
+				# 			)
+				# 		)
 
 					item_barcode.barcode_type = (
 						"" if item_barcode.barcode_type not in options else item_barcode.barcode_type
